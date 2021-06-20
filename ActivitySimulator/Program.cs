@@ -32,13 +32,13 @@ namespace ActivitySimulator
             var rows = fileContents.Where(f => !string.IsNullOrWhiteSpace(f)).ToList();
             rows.RemoveAt(0);
             //skip header row, reduce by 1, start at 1 for loop
-            var activities = new Activity[rows.Count() - 1];
+            var activities = new Activity[rows.Count()];
 
-            for (var row = 1; row < rows.Count(); row++)
+            for (var row = 0; row < rows.Count(); row++)
             {
                 var line = rows[row];
                 var split = line.Split(',');
-                activities[row - 1] = new Activity()
+                activities[row] = new Activity()
                 {
                     ActivityNumber = int.Parse(split[0]),
                     Durations = new decimal[] { int.Parse(split[1]), int.Parse(split[2]), int.Parse(split[3]) },
@@ -203,23 +203,20 @@ namespace ActivitySimulator
         {
             Console.WriteLine("Performing duration/probability calculations on all combinations...");
 
+            using StreamWriter writer = File.CreateText(outputFileName);
+
             //setting up csv header row
-            var output = new StringBuilder();
-            output.Append("Scenario Combinations,");
+            writer.Write("Scenario Combinations,");
             foreach (var activity in activities)
             {
-                output.Append("D(");
-                output.Append(activity.ActivityNumber);
-                output.Append("),");
+                writer.Write("D(" + activity.ActivityNumber + "),");
             }
-            output.Append("Total Duration,");
+            writer.Write("Total Duration,");
             foreach (var activity in activities)
             {
-                output.Append("P(");
-                output.Append(activity.ActivityNumber);
-                output.Append("),");
+                writer.Write("P(" + activity.ActivityNumber + "),");
             }
-            output.Append("Expected Probability,Expected Duration\n");
+            writer.Write("Expected Probability,Expected Duration\n");
 
             decimal totalExpectedDuration = 0;
 
@@ -251,30 +248,26 @@ namespace ActivitySimulator
                 //enter row for csv output
                 foreach (var value in operation)
                 {
-                    output.Append(value[1]);
+                    writer.Write(value[1]);
                 }
-                output.Append(',');
+                writer.Write(',');
                 foreach (var value in operation)
                 {
-                    output.Append(activities[value[0]].Durations[value[1]]);
-                    output.Append(',');
+                    writer.Write(activities[value[0]].Durations[value[1]]);
+                    writer.Write(',');
                 }
-                output.Append(subtotalDuration);
-                output.Append(',');
+                writer.Write(subtotalDuration + ',');
                 foreach (var value in operation)
                 {
-                    output.Append(activities[value[0]].Probabilities[value[1]]);
-                    output.Append(',');
+                    writer.Write(activities[value[0]].Probabilities[value[1]] + ',');
                 }
-                if (subtotalExpectedProbability != null) output.Append(subtotalExpectedProbability.Value.ToString("0.############################"));
-                output.Append(',');
-                output.Append(subtotalExpectedDuration.ToString("0.############################"));
-                output.AppendLine();
+                if (subtotalExpectedProbability != null) writer.Write(subtotalExpectedProbability.Value.ToString("0.############################"));
+                writer.WriteLine(',' + subtotalExpectedDuration.ToString("0.############################"));
 
                 totalExpectedDuration += subtotalExpectedDuration;
             }
 
-            File.WriteAllText(outputFileName, output.ToString());
+            //File.WriteAllText(outputFileName, output.ToString());
 
             Console.WriteLine("Calculations written to " + outputFileName);
 
