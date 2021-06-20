@@ -3,32 +3,39 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace ActivitySimulator
 {
     class Program
     {
-        static string inputFileName = "input.csv";
-        static string outputFileName = "output.csv";
+        //13 activities takes about 6 seconds non-threaded (14 activities takes 30 seconds)
+        //13 activities takes about 2 seconds threaded (14 activities takes 6.5 seconds)
+        static string _inputFileName = "input.csv";
+        static string _outputFileName = "output.csv";
 
         static void Main(string[] args)
         {
-            //13 activities takes about 6 seconds non-threaded (14 activities takes 30 seconds)
-            //13 activities takes about 2 seconds threaded (14 activities takes 6.5 seconds)
+            if (string.IsNullOrEmpty(args[0]))
+            {
+                Console.WriteLine("Please provide an input CSV file eg: ActivitySimulator.exe input.csv");
+            }
+            else
+            {
+                _inputFileName = args[0];
 
-            var activities = LoadActivities();
+                var activities = LoadActivities();
 
-            //double iterations = 1000000;
-            //PerformTaskRandom(activities, iterations);
+                //double iterations = 1000000;
+                //PerformTaskRandom(activities, iterations);
 
-            PerformTaskNonrepeating(activities);
+                PerformTaskNonrepeating(activities);
+            }
         }
 
         static Activity[] LoadActivities()
         {
-            var fileContents = File.ReadAllLines(inputFileName);
+            var fileContents = File.ReadAllLines(_inputFileName);
             var rows = fileContents.Where(f => !string.IsNullOrWhiteSpace(f)).ToList();
             rows.RemoveAt(0);
             //skip header row, reduce by 1, start at 1 for loop
@@ -46,7 +53,7 @@ namespace ActivitySimulator
                 };
             }
 
-            Console.WriteLine("Loaded " + activities.Length + " activities from " + inputFileName);
+            Console.WriteLine("Loaded " + activities.Length + " activities from " + _inputFileName);
 
             return activities;
         }
@@ -125,8 +132,15 @@ namespace ActivitySimulator
             var results = new List<List<int[]>>();
 
             var tasks = new List<Task<List<List<int[]>>>>();
+            var jobSize = completeIterations;
+
             var cores = (ulong)Environment.ProcessorCount;
-            var jobSize = completeIterations / cores;
+            if (completeIterations > cores)
+            {
+                jobSize = completeIterations / cores;
+            }
+
+            var activityDurationIndexs = new int[activities.Length];
 
             ulong i = 0;
             while (i < completeIterations)
@@ -142,7 +156,7 @@ namespace ActivitySimulator
                     endIndex = i + jobSize;
                 }
 
-                tasks.Add(ThreadAssembleOperations(activities, i, endIndex, numDurations));
+                tasks.Add(ThreadAssembleOperations(activities, i, endIndex, numDurations, activityDurationIndexs));
 
                 i = endIndex;
             }
@@ -159,11 +173,11 @@ namespace ActivitySimulator
             return results;
         }
         
-        static async Task<List<List<int[]>>> ThreadAssembleOperations(Activity[] activities, ulong iterationsStart, ulong iterationsStop, int numDurations)
+        static async Task<List<List<int[]>>> ThreadAssembleOperations(Activity[] activities, ulong iterationsStart, ulong iterationsStop, int numDurations, int[] activityDurationIndexs)
         {
             return await Task.Run(() =>
             {
-                var activityDurationIndexs = new int[activities.Length];
+                
                 var results = new List<List<int[]>>();
                 var activityDurationIndexesLength = (ulong)activityDurationIndexs.Length;
                 var activitiesLength = (ulong)activities.Length;
@@ -172,7 +186,7 @@ namespace ActivitySimulator
                 {
                     for (ulong j = 0; j < activityDurationIndexesLength; j++)
                     {
-                        if (i % (Math.Pow(numDurations, activitiesLength - 1 - j)) == 0 && i != 0)
+                        if (i % (Math.Pow(numDurations, activitiesLength - j - 1)) == 0 && i != 0)
                         {
                             if (activityDurationIndexs[j] == numDurations - 1)
                             {
@@ -203,7 +217,7 @@ namespace ActivitySimulator
         {
             Console.WriteLine("Performing duration/probability calculations on all combinations...");
 
-            using StreamWriter writer = File.CreateText(outputFileName);
+            using StreamWriter writer = File.CreateText(_outputFileName);
 
             //setting up csv header row
             writer.Write("Scenario Combinations,");
@@ -267,9 +281,7 @@ namespace ActivitySimulator
                 totalExpectedDuration += subtotalExpectedDuration;
             }
 
-            //File.WriteAllText(outputFileName, output.ToString());
-
-            Console.WriteLine("Calculations written to " + outputFileName);
+            Console.WriteLine("Calculations written to " + _outputFileName);
 
             Console.WriteLine("Expected Duration: " + totalExpectedDuration);
 

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ActivitySimulator": {
+      "commandName": "Project",
+      "commandLineArgs": "input.csv"
+    }
+  }
+}
