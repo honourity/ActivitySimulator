@@ -17,7 +17,8 @@ namespace ActivitySimulator
 
             var activities = LoadActivities();
 
-            //PerformTaskRandom(activities);
+            //double iterations = 1000000;
+            //PerformTaskRandom(activities, iterations);
 
             PerformTaskNonrepeating(activities);
         }
@@ -44,10 +45,8 @@ namespace ActivitySimulator
             return activities;
         }
 
-        static void PerformTaskRandom(Activity[] activities)
+        static void PerformTaskRandom(Activity[] activities, double iterations)
         {
-            var iterations = 1000000d;
-
             Console.WriteLine("Performing random probablistic duration calculations with " + iterations + " iterations");
 
             var random = new Random();
@@ -115,18 +114,18 @@ namespace ActivitySimulator
             var numDurations = activities[0].Durations.Length;
 
             //theoretically the number of possible outcomes
-            var completeIterations = (long)Math.Round(Math.Pow(numDurations, activities.Length));
+            var completeIterations = (ulong)Math.Round(Math.Pow(numDurations, activities.Length));
 
             var results = new List<List<int[]>>();
 
-            var tasks = new List<Task<List<int[]>[]>>();
-            var cores = Environment.ProcessorCount;
+            var tasks = new List<Task<List<List<int[]>>>>();
+            var cores = (ulong)Environment.ProcessorCount;
             var jobSize = completeIterations / cores;
 
-            long i = 0;
+            ulong i = 0;
             while (i < completeIterations)
             {
-                long endIndex;
+                ulong endIndex;
 
                 if (completeIterations - i < jobSize)
                 {
@@ -154,18 +153,20 @@ namespace ActivitySimulator
             return results;
         }
         
-        static async Task<List<int[]>[]> ThreadAssembleOperations(Activity[] activities, long iterationsStart, long iterationsStop, int numDurations)
+        static async Task<List<List<int[]>>> ThreadAssembleOperations(Activity[] activities, ulong iterationsStart, ulong iterationsStop, int numDurations)
         {
             return await Task.Run(() =>
             {
                 var activityDurationIndexs = new int[activities.Length];
-                var results = new List<int[]>[iterationsStop - iterationsStart];
+                var results = new List<List<int[]>>();
+                var activityDurationIndexesLength = (ulong)activityDurationIndexs.Length;
+                var activitiesLength = (ulong)activities.Length;
 
-                for (long i = iterationsStart; i < iterationsStop; i++)
+                for (ulong i = iterationsStart; i < iterationsStop; i++)
                 {
-                    for (var j = 0; j < activityDurationIndexs.Length; j++)
+                    for (ulong j = 0; j < activityDurationIndexesLength; j++)
                     {
-                        if (i % (Math.Pow(numDurations, activities.Length - 1 - j)) == 0 && i != 0)
+                        if (i % (Math.Pow(numDurations, activitiesLength - 1 - j)) == 0 && i != 0)
                         {
                             if (activityDurationIndexs[j] == numDurations - 1)
                             {
@@ -185,7 +186,7 @@ namespace ActivitySimulator
 
                         set.Add(activity);
                     }
-                    results[i - iterationsStart] = set;
+                    results.Add(set);
                 }
 
                 return results;
@@ -249,19 +250,19 @@ namespace ActivitySimulator
                 output.Append(',');
                 foreach (var value in operation)
                 {
-                    output.Append(activities[value[0]].Durations[value[1]].ToString("0.########"));
+                    output.Append(activities[value[0]].Durations[value[1]].ToString("0.#############"));
                     output.Append(',');
                 }
                 output.Append(subtotalDuration);
                 output.Append(',');
                 foreach (var value in operation)
                 {
-                    output.Append(activities[value[0]].Probabilities[value[1]].ToString("0.########"));
+                    output.Append(activities[value[0]].Probabilities[value[1]].ToString("0.#############"));
                     output.Append(',');
                 }
-                if (subtotalExpectedProbability != null) output.Append(subtotalExpectedProbability.Value.ToString("0.########"));
+                if (subtotalExpectedProbability != null) output.Append(subtotalExpectedProbability.Value.ToString("0.#############"));
                 output.Append(',');
-                output.Append(subtotalExpectedDuration.ToString("0.########"));
+                output.Append(subtotalExpectedDuration.ToString("0.#############"));
                 output.AppendLine();
 
                 totalExpectedDuration += subtotalExpectedDuration;
