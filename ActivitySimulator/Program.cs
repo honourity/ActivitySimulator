@@ -10,6 +10,9 @@ namespace ActivitySimulator
 {
     class Program
     {
+        static string inputFileName = "input.csv";
+        static string outputFileName = "output.csv";
+
         static void Main(string[] args)
         {
             //13 activities takes about 6 seconds non-threaded (14 activities takes 30 seconds)
@@ -25,37 +28,40 @@ namespace ActivitySimulator
 
         static Activity[] LoadActivities()
         {
-            var fileContents = File.ReadAllLines("input.csv");
-
+            var fileContents = File.ReadAllLines(inputFileName);
+            var rows = fileContents.Where(f => !string.IsNullOrWhiteSpace(f)).ToList();
+            rows.RemoveAt(0);
             //skip header row, reduce by 1, start at 1 for loop
-            var activities = new Activity[fileContents.Length - 1];
+            var activities = new Activity[rows.Count() - 1];
 
-            for (var row = 1; row < fileContents.Length; row++)
+            for (var row = 1; row < rows.Count(); row++)
             {
-                var line = fileContents[row];
+                var line = rows[row];
                 var split = line.Split(',');
                 activities[row - 1] = new Activity()
                 {
                     ActivityNumber = int.Parse(split[0]),
-                    Durations = new int[] { int.Parse(split[1]), int.Parse(split[2]), int.Parse(split[3]) },
-                    Probabilities = new double[] { double.Parse(split[4]), double.Parse(split[5]), double.Parse(split[6]) }
+                    Durations = new decimal[] { int.Parse(split[1]), int.Parse(split[2]), int.Parse(split[3]) },
+                    Probabilities = new decimal[] { decimal.Parse(split[4]), decimal.Parse(split[5]), decimal.Parse(split[6]) }
                 };
             }
+
+            Console.WriteLine("Loaded " + activities.Length + " activities from " + inputFileName);
 
             return activities;
         }
 
-        static void PerformTaskRandom(Activity[] activities, double iterations)
+        static void PerformTaskRandom(Activity[] activities, int iterations)
         {
             Console.WriteLine("Performing random probablistic duration calculations with " + iterations + " iterations");
 
             var random = new Random();
             var results = new List<Result>();
             
-            for (var i = 0d; i < iterations; i++) { PerformTaskRandomIteration(activities, results, random); }
+            for (int i = 0; i < iterations; i++) { PerformTaskRandomIteration(activities, results, random); }
 
             var ordered = results.OrderBy(r => r.Duration);
-            var expectedDuration = 0d;
+            decimal expectedDuration = 0;
             foreach (var result in ordered)
             {
                 expectedDuration += result.Duration * (result.Occurences / iterations);
@@ -69,11 +75,11 @@ namespace ActivitySimulator
 
         static void PerformTaskRandomIteration(Activity[] activities, List<Result> results, Random random)
         {
-            var duration = 0d;
+            decimal duration = 0;
             foreach (var activity in activities)
             {
                 //add up probabilities and compare with random roll, a bit like a pie chart
-                var roll = random.NextDouble();
+                var roll = (decimal)random.NextDouble();
                 if (roll <= activity.Probabilities[0])
                 {
                     duration += activity.Durations[0];
@@ -109,7 +115,7 @@ namespace ActivitySimulator
             var timer = new Stopwatch();
             timer.Start();
 
-            Console.WriteLine("Assembling comprehensive list of activity & duration combinations...");
+            Console.WriteLine("Assembling full list of activity & duration combinations...");
 
             var numDurations = activities[0].Durations.Length;
 
@@ -148,7 +154,7 @@ namespace ActivitySimulator
 
             timer.Stop();
 
-            Console.WriteLine("Assembled " + results.Count() + " different combinations (took " + timer.Elapsed.TotalSeconds + " seconds)");
+            Console.WriteLine("Assembled " + results.Count() + " different combinations (took " + timer.Elapsed.TotalSeconds.ToString("0.##") + " seconds)");
 
             return results;
         }
@@ -215,13 +221,13 @@ namespace ActivitySimulator
             }
             output.Append("Expected Probability,Expected Duration\n");
 
-            var totalExpectedDuration = 0d;
+            decimal totalExpectedDuration = 0;
 
             foreach (var operation in results)
             {
-                var subtotalDuration = 0d;
-                double? subtotalExpectedProbability = null;
-                var subtotalExpectedDuration = 0d;
+                decimal subtotalDuration = 0;
+                decimal? subtotalExpectedProbability = null;
+                decimal subtotalExpectedDuration = 0;
 
                 foreach (var value in operation)
                 {
@@ -250,27 +256,29 @@ namespace ActivitySimulator
                 output.Append(',');
                 foreach (var value in operation)
                 {
-                    output.Append(activities[value[0]].Durations[value[1]].ToString("0.#############"));
+                    output.Append(activities[value[0]].Durations[value[1]]);
                     output.Append(',');
                 }
                 output.Append(subtotalDuration);
                 output.Append(',');
                 foreach (var value in operation)
                 {
-                    output.Append(activities[value[0]].Probabilities[value[1]].ToString("0.#############"));
+                    output.Append(activities[value[0]].Probabilities[value[1]]);
                     output.Append(',');
                 }
-                if (subtotalExpectedProbability != null) output.Append(subtotalExpectedProbability.Value.ToString("0.#############"));
+                if (subtotalExpectedProbability != null) output.Append(subtotalExpectedProbability.Value.ToString("0.############################"));
                 output.Append(',');
-                output.Append(subtotalExpectedDuration.ToString("0.#############"));
+                output.Append(subtotalExpectedDuration.ToString("0.############################"));
                 output.AppendLine();
 
                 totalExpectedDuration += subtotalExpectedDuration;
             }
 
-            Console.WriteLine("Expected Duration: " + totalExpectedDuration);
+            File.WriteAllText(outputFileName, output.ToString());
 
-            File.WriteAllText("output.csv", output.ToString());
+            Console.WriteLine("Calculations written to " + outputFileName);
+
+            Console.WriteLine("Expected Duration: " + totalExpectedDuration);
 
             Console.WriteLine("DONE!\n");
         }
@@ -280,13 +288,13 @@ namespace ActivitySimulator
     {
         public int ActivityNumber;
 
-        public int[] Durations;
-        public double[] Probabilities;
+        public decimal[] Durations;
+        public decimal[] Probabilities;
     }
 
     class Result
     {
-        public double Duration;
+        public decimal Duration;
         public int Occurences;
         public List<Activity> ActivitySet = new();
     }
