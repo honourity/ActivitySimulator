@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace ActivitySimulator
@@ -13,7 +14,6 @@ namespace ActivitySimulator
         {
             //13 activities takes about 6 seconds non-threaded (14 activities takes 30 seconds)
             //13 activities takes about 2 seconds threaded (14 activities takes 6.5 seconds)
-
 
             var activities = LoadActivities();
 
@@ -27,93 +27,19 @@ namespace ActivitySimulator
             var fileContents = File.ReadAllLines("input.csv");
 
             //skip header row, reduce by 1, start at 1 for loop
-            //var activities = new Activity[fileContents.Length - 1];
+            var activities = new Activity[fileContents.Length - 1];
 
-            //for (var row = 1; row < fileContents.Length; row++)
-            //{
-            //    var line = fileContents[row];
-            //    var split = line.Split(',');
-            //    activities[row - 1] = new Activity()
-            //    {
-            //        ActivityNumber = int.Parse(split[0]),
-            //        Durations = new int[] { int.Parse(split[1]), int.Parse(split[2]), int.Parse(split[3]) },
-            //        Probabilities = new double[] { double.Parse(split[4]), double.Parse(split[5]), double.Parse(split[6]) }
-            //    };
-            //}
-
-            var activities = new Activity[]
+            for (var row = 1; row < fileContents.Length; row++)
             {
-                new Activity() {
-                    ActivityNumber = 1,
-                    Durations = new int[] { 4, 8, 10 },
-                    Probabilities = new double[] { 0.15, 0.50, 0.35 },
-                },
-                new Activity() {
-                    ActivityNumber = 2,
-                    Durations = new int[] { 1, 2, 4 },
-                    Probabilities = new double[] { 0.25, 0.50, 0.25 },
-                },
-                new Activity() {
-                    ActivityNumber = 3,
-                    Durations = new int[] { 4, 8, 10 },
-                    Probabilities = new double[] { 0.15, 0.50, 0.35 },
-                },
-                new Activity() {
-                    ActivityNumber = 4,
-                    Durations = new int[] { 1, 2, 4 },
-                    Probabilities = new double[] { 0.25, 0.50, 0.25 },
-                },
-                new Activity() {
-                    ActivityNumber = 5,
-                    Durations = new int[] { 4, 8, 10 },
-                    Probabilities = new double[] { 0.15, 0.50, 0.35 },
-                },
-                new Activity() {
-                    ActivityNumber = 6,
-                    Durations = new int[] { 1, 2, 4 },
-                    Probabilities = new double[] { 0.25, 0.50, 0.25 },
-                },
-                new Activity() {
-                    ActivityNumber = 7,
-                    Durations = new int[] { 4, 8, 10 },
-                    Probabilities = new double[] { 0.15, 0.50, 0.35 },
-                },
-                new Activity() {
-                    ActivityNumber = 8,
-                    Durations = new int[] { 1, 2, 4 },
-                    Probabilities = new double[] { 0.25, 0.50, 0.25 },
-                },
-                new Activity() {
-                    ActivityNumber = 9,
-                    Durations = new int[] { 4, 8, 10 },
-                    Probabilities = new double[] { 0.15, 0.50, 0.35 },
-                },
-                new Activity() {
-                    ActivityNumber = 10,
-                    Durations = new int[] { 4, 8, 10 },
-                    Probabilities = new double[] { 0.15, 0.50, 0.35 },
-                },
-                new Activity() {
-                    ActivityNumber = 11,
-                    Durations = new int[] { 4, 8, 10 },
-                    Probabilities = new double[] { 0.15, 0.50, 0.35 },
-                },
-                new Activity() {
-                    ActivityNumber = 12,
-                    Durations = new int[] { 4, 8, 10 },
-                    Probabilities = new double[] { 0.15, 0.50, 0.35 },
-                },
-                new Activity() {
-                    ActivityNumber = 13,
-                    Durations = new int[] { 4, 8, 10 },
-                    Probabilities = new double[] { 0.15, 0.50, 0.35 },
-                },
-                new Activity() {
-                    ActivityNumber = 14,
-                    Durations = new int[] { 4, 8, 10 },
-                    Probabilities = new double[] { 0.15, 0.50, 0.35 },
-                },
-            };
+                var line = fileContents[row];
+                var split = line.Split(',');
+                activities[row - 1] = new Activity()
+                {
+                    ActivityNumber = int.Parse(split[0]),
+                    Durations = new int[] { int.Parse(split[1]), int.Parse(split[2]), int.Parse(split[3]) },
+                    Probabilities = new double[] { double.Parse(split[4]), double.Parse(split[5]), double.Parse(split[6]) }
+                };
+            }
 
             return activities;
         }
@@ -194,7 +120,7 @@ namespace ActivitySimulator
             var results = new List<List<int[]>>();
 
             var tasks = new List<Task<List<int[]>[]>>();
-            var cores = 32;
+            var cores = Environment.ProcessorCount;
             var jobSize = completeIterations / cores;
 
             long i = 0;
@@ -230,8 +156,6 @@ namespace ActivitySimulator
         
         static async Task<List<int[]>[]> ThreadAssembleOperations(Activity[] activities, long iterationsStart, long iterationsStop, int numDurations)
         {
-            //threadsafe somehow add processed results to 'results' variable,
-            // since each thread will be running on a subset, they will all be accessing same results array, but different indexes
             return await Task.Run(() =>
             {
                 var activityDurationIndexs = new int[activities.Length];
@@ -270,22 +194,36 @@ namespace ActivitySimulator
 
         static void CalculateExpectedDuration(Activity[] activities, List<List<int[]>> results)
         {
-            Console.WriteLine("Performing probability calculations on combinations...");
+            Console.WriteLine("Performing duration/probability calculations on all combinations...");
+
+            //setting up csv header row
+            var output = new StringBuilder();
+            output.Append("Scenario Combinations,");
+            foreach (var activity in activities)
+            {
+                output.Append("D(");
+                output.Append(activity.ActivityNumber);
+                output.Append("),");
+            }
+            output.Append("Total Duration,");
+            foreach (var activity in activities)
+            {
+                output.Append("P(");
+                output.Append(activity.ActivityNumber);
+                output.Append("),");
+            }
+            output.Append("Expected Probability,Expected Duration\n");
 
             var totalExpectedDuration = 0d;
 
-            var l = 0;
             foreach (var operation in results)
             {
-                l++;
                 var subtotalDuration = 0d;
                 double? subtotalExpectedProbability = null;
                 var subtotalExpectedDuration = 0d;
 
-                var i = 0;
                 foreach (var value in operation)
                 {
-                    i++;
                     subtotalDuration += activities[value[0]].Durations[value[1]];
 
                     if (subtotalExpectedProbability == null)
@@ -303,10 +241,36 @@ namespace ActivitySimulator
                     subtotalExpectedDuration = subtotalDuration * subtotalExpectedProbability.Value;
                 }
 
+                //enter row for csv output
+                foreach (var value in operation)
+                {
+                    output.Append(value[1]);
+                }
+                output.Append(',');
+                foreach (var value in operation)
+                {
+                    output.Append(activities[value[0]].Durations[value[1]].ToString("0.########"));
+                    output.Append(',');
+                }
+                output.Append(subtotalDuration);
+                output.Append(',');
+                foreach (var value in operation)
+                {
+                    output.Append(activities[value[0]].Probabilities[value[1]].ToString("0.########"));
+                    output.Append(',');
+                }
+                if (subtotalExpectedProbability != null) output.Append(subtotalExpectedProbability.Value.ToString("0.########"));
+                output.Append(',');
+                output.Append(subtotalExpectedDuration.ToString("0.########"));
+                output.AppendLine();
+
                 totalExpectedDuration += subtotalExpectedDuration;
             }
 
             Console.WriteLine("Expected Duration: " + totalExpectedDuration);
+
+            File.WriteAllText("output.csv", output.ToString());
+
             Console.WriteLine("DONE!\n");
         }
     }
