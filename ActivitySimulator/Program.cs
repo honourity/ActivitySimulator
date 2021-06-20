@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -10,7 +11,7 @@ namespace ActivitySimulator
     {
         static void Main(string[] args)
         {
-            //13 activities takes about 6.4 seconds non-threaded
+            //13 activities takes about 6 seconds non-threaded
 
             var activities = LoadActivities();
 
@@ -21,6 +22,23 @@ namespace ActivitySimulator
 
         static Activity[] LoadActivities()
         {
+            //var fileContents = File.ReadAllLines("input.csv");
+
+            ////skip header row, reduce by 1, start at 1 for loop
+            //var activities = new Activity[fileContents.Length - 1];
+
+            //for (var row = 1; row < fileContents.Length; row++)
+            //{
+            //    var line = fileContents[row];
+            //    var split = line.Split(',');
+            //    activities[row - 1] = new Activity()
+            //    {
+            //        ActivityNumber = int.Parse(split[0]),
+            //        Durations = new int[] { int.Parse(split[1]), int.Parse(split[2]), int.Parse(split[3]) },
+            //        Probabilities = new double[] { double.Parse(split[4]), double.Parse(split[5]), double.Parse(split[6]) }
+            //    };
+            //}
+
             var activities = new Activity[]
             {
                 new Activity() {
@@ -62,11 +80,6 @@ namespace ActivitySimulator
                     ActivityNumber = 1,
                     Durations = new int[] { 1, 2, 4 },
                     Probabilities = new double[] { 0.25, 0.50, 0.25 },
-                },
-                new Activity() {
-                    ActivityNumber = 0,
-                    Durations = new int[] { 4, 8, 10 },
-                    Probabilities = new double[] { 0.15, 0.50, 0.35 },
                 },
                 new Activity() {
                     ActivityNumber = 0,
