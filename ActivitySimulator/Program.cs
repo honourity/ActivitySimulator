@@ -11,8 +11,7 @@ namespace ActivitySimulator
     {
         //13 activities takes about 6 seconds non-threaded (14 activities takes 30 seconds)
         //13 activities takes about 2 seconds threaded (14 activities takes 6.5 seconds)
-        static string _inputFileName = "input.csv";
-        static string _outputFileName = "output.csv";
+        static string _inputFileName = null;
 
         static void Main(string[] args)
         {
@@ -135,10 +134,13 @@ namespace ActivitySimulator
             var jobSize = completeIterations;
 
             var cores = (ulong)Environment.ProcessorCount;
-            if (completeIterations > cores)
-            {
-                jobSize = completeIterations / cores;
-            }
+
+            ////uncomment this to enable multi-threading - needs activityDurationIndexs to be carefully calculated and created in each thread,
+            //// so each thread can start at index 0 without causing skipping over of values or repeat results
+            //if (completeIterations > cores)
+            //{
+            //    jobSize = completeIterations / cores;
+            //}
 
             var activityDurationIndexs = new int[activities.Length];
 
@@ -177,7 +179,6 @@ namespace ActivitySimulator
         {
             return await Task.Run(() =>
             {
-                
                 var results = new List<List<int[]>>();
                 var activityDurationIndexesLength = (ulong)activityDurationIndexs.Length;
                 var activitiesLength = (ulong)activities.Length;
@@ -217,7 +218,10 @@ namespace ActivitySimulator
         {
             Console.WriteLine("Performing duration/probability calculations on all combinations...");
 
-            using StreamWriter writer = File.CreateText(_outputFileName);
+            var outputFilename = _inputFileName.Split(".csv")[0];
+            outputFilename += "_output.csv";
+
+            using StreamWriter writer = File.CreateText(outputFilename);
 
             //setting up csv header row
             writer.Write("Scenario Combinations,");
@@ -264,26 +268,26 @@ namespace ActivitySimulator
                 {
                     writer.Write(value[1]);
                 }
-                writer.Write(',');
+                writer.Write(",");
                 foreach (var value in operation)
                 {
                     writer.Write(activities[value[0]].Durations[value[1]]);
-                    writer.Write(',');
+                    writer.Write(",");
                 }
-                writer.Write(subtotalDuration + ',');
+                writer.Write(subtotalDuration + ",");
                 foreach (var value in operation)
                 {
-                    writer.Write(activities[value[0]].Probabilities[value[1]] + ',');
+                    writer.Write(activities[value[0]].Probabilities[value[1]] + ",");
                 }
                 if (subtotalExpectedProbability != null) writer.Write(subtotalExpectedProbability.Value.ToString("0.############################"));
-                writer.WriteLine(',' + subtotalExpectedDuration.ToString("0.############################"));
+                writer.WriteLine("," + subtotalExpectedDuration.ToString("0.############################"));
 
                 totalExpectedDuration += subtotalExpectedDuration;
             }
 
-            Console.WriteLine("Calculations written to " + _outputFileName);
+            Console.WriteLine("Calculations written to \"" + outputFilename + "\"");
 
-            Console.WriteLine("Expected Duration: " + totalExpectedDuration);
+            Console.WriteLine("Expected Duration: " + totalExpectedDuration.ToString("0.############################"));
 
             Console.WriteLine("DONE!\n");
         }
