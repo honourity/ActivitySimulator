@@ -13,22 +13,55 @@ namespace ActivitySimulator
         //13 activities takes about 2 seconds threaded (14 activities takes 6.5 seconds)
         static string _inputFileName = null;
 
+        static readonly Random _random = new();
+
         static void Main(string[] args)
         {
-            if (string.IsNullOrEmpty(args[0]))
+            var random = false;
+            var iterations = 10000;
+
+            if (args.Length > 1 && !string.IsNullOrEmpty(args[1]))
             {
-                Console.WriteLine("Please provide an input CSV file eg: ActivitySimulator.exe input.csv");
+                if (args.Length > 2)
+                {
+                    _ = int.TryParse(args[1], out iterations);
+                }
+
+                if (args[0] == "-r")
+                {
+                    random = true;
+                }
+
+                _inputFileName = args[^1];
             }
             else
             {
-                _inputFileName = args[0];
+                if (args.Length > 0 || !string.IsNullOrEmpty(args[^1]))
+                {
+                    _inputFileName = args[^1];
+                }
+                else
+                {
+                    Console.WriteLine("Please provide an input CSV file eg: ActivitySimulator.exe [-r] input.csv\nOptionally -r before input.csv to generate randomised output instead of simulated");
+                }
+            }
 
+            if (string.IsNullOrEmpty(args[^1]))
+            {
+                Console.WriteLine("Please provide an input CSV file eg: ActivitySimulator.exe [-r] input.csv\nOptionally -r before input.csv to generate randomised output instead of simulated");
+            }
+            else
+            {
                 var activities = LoadActivities();
 
-                //double iterations = 1000000;
-                //PerformTaskRandom(activities, iterations);
-
-                PerformTaskNonrepeating(activities);
+                if (random)
+                {
+                    PerformTaskRandom(activities, iterations);
+                }
+                else
+                {
+                    PerformTaskNonrepeating(activities);
+                }
             }
         }
 
@@ -59,55 +92,61 @@ namespace ActivitySimulator
 
         static void PerformTaskRandom(Activity[] activities, int iterations)
         {
-            Console.WriteLine("Performing random probablistic duration calculations with " + iterations + " iterations");
+            var results = AssembleActivityDurationOperationsRandom(activities, iterations);
 
-            var random = new Random();
-            var results = new List<Result>();
-            
-            for (int i = 0; i < iterations; i++) { PerformTaskRandomIteration(activities, results, random); }
+            results = results.OrderBy(operationActivities => int.Parse(string.Join(string.Empty, operationActivities.Select(operationActivity => operationActivity[1])))).ToList();
 
-            var ordered = results.OrderBy(r => r.Duration);
-            decimal expectedDuration = 0;
-            foreach (var result in ordered)
-            {
-                expectedDuration += result.Duration * (result.Occurences / iterations);
-                //Console.WriteLine("Duration:" + result.Duration + " Proportion: " + (result.Occurences / iterations));
-            }
+            CalculateExpectedDuration(activities, results);
 
-            Console.WriteLine("Expected Duration: " + Math.Round(expectedDuration, 3));
+            //Console.WriteLine("Performing random probablistic duration calculations with " + iterations + " iterations");
 
-            Console.WriteLine("DONE!\n");
+            //var random = new Random();
+            //var results = new List<Result>();
+
+            //for (int i = 0; i < iterations; i++) { PerformTaskRandomIteration(activities, results, random); }
+
+            //var ordered = results.OrderBy(r => r.Duration);
+            //decimal expectedDuration = 0;
+            //foreach (var result in ordered)
+            //{
+            //    expectedDuration += result.Duration * (result.Occurences / iterations);
+            //    //Console.WriteLine("Duration:" + result.Duration + " Proportion: " + (result.Occurences / iterations));
+            //}
+
+            //Console.WriteLine("Expected Duration: " + Math.Round(expectedDuration, 3));
+
+            //Console.WriteLine("DONE!\n");
         }
 
-        static void PerformTaskRandomIteration(Activity[] activities, List<Result> results, Random random)
-        {
-            decimal duration = 0;
-            foreach (var activity in activities)
-            {
-                //add up probabilities and compare with random roll, a bit like a pie chart
-                var roll = (decimal)random.NextDouble();
-                if (roll <= activity.Probabilities[0])
-                {
-                    duration += activity.Durations[0];
-                }
-                else if (roll <= activity.Probabilities[0] + activity.Probabilities[1])
-                {
-                    duration += activity.Durations[1];
-                }
-                else
-                {
-                    duration += activity.Durations[2];
-                }
-            }
+        //static void PerformTaskRandomIteration(Activity[] activities, List<Result> results, Random random)
+        //{
+        //    decimal duration = 0;
+        //    foreach (var activity in activities)
+        //    {
+        //        //add up probabilities and compare with random roll, a bit like a pie chart
+        //        var roll = (decimal)random.NextDouble();
+        //        if (roll <= activity.Probabilities[0])
+        //        {
+        //            duration += activity.Durations[0];
+        //        }
+        //        else if (roll <= activity.Probabilities[0] + activity.Probabilities[1])
+        //        {
+        //            duration += activity.Durations[1];
+        //        }
+        //        else
+        //        {
+        //            duration += activity.Durations[2];
+        //        }
+        //    }
 
-            var existing = results.FirstOrDefault(r => r.Duration == duration);
-            if (existing == null)
-            {
-                existing = new Result() { Duration = duration };
-                results.Add(existing);
-            }
-            existing.Occurences++;
-        }
+        //    var existing = results.FirstOrDefault(r => r.Duration == duration);
+        //    if (existing == null)
+        //    {
+        //        existing = new Result() { Duration = duration };
+        //        results.Add(existing);
+        //    }
+        //    existing.Occurences++;
+        //}
 
         static void PerformTaskNonrepeating(Activity[] activities)
         {
@@ -174,7 +213,52 @@ namespace ActivitySimulator
 
             return results;
         }
-        
+
+        static List<List<int[]>> AssembleActivityDurationOperationsRandom(Activity[] activities, int iterations)
+        {
+            var timer = new Stopwatch();
+            timer.Start();
+
+            Console.WriteLine("Assembling full list of activity & duration combinations...");
+
+            //a list of all scenarios in this randomly chosen subset simulation
+            var results = new List<List<int[]>>();
+
+            for (var i = 0; i < iterations; i++)
+            {
+                //a whole scenario, list of every activity with a single duration choice
+                var result = new List<int[]>();
+
+                for (var j = 0; j < activities.Count(); j++)
+                {
+                    var roll = (decimal)_random.NextDouble();
+                    if (roll <= activities[j].Probabilities[0])
+                    {
+                        //one activity index with one duration index
+                        result.Add(new int[2] { j, 0 });
+                    }
+                    else if (roll <= activities[j].Probabilities[0] + activities[j].Probabilities[1])
+                    {
+                        //one activity index with one duration index
+                        result.Add(new int[2] { j, 1 });
+                    }
+                    else
+                    {
+                        //one activity index with one duration index
+                        result.Add(new int[2] { j, 2 });
+                    }
+                }
+
+                results.Add(result);
+            }
+
+            timer.Stop();
+
+            Console.WriteLine("Assembled " + results.Count() + " different combinations (took " + timer.Elapsed.TotalSeconds.ToString("0.##") + " seconds)");
+
+            return results;
+        }
+
         static async Task<List<List<int[]>>> ThreadAssembleOperations(Activity[] activities, ulong iterationsStart, ulong iterationsStop, int numDurations, int[] activityDurationIndexs)
         {
             return await Task.Run(() =>
