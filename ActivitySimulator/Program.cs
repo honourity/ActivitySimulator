@@ -97,56 +97,7 @@ namespace ActivitySimulator
             results = results.OrderBy(operationActivities => int.Parse(string.Join(string.Empty, operationActivities.Select(operationActivity => operationActivity[1])))).ToList();
 
             CalculateExpectedDuration(activities, results);
-
-            //Console.WriteLine("Performing random probablistic duration calculations with " + iterations + " iterations");
-
-            //var random = new Random();
-            //var results = new List<Result>();
-
-            //for (int i = 0; i < iterations; i++) { PerformTaskRandomIteration(activities, results, random); }
-
-            //var ordered = results.OrderBy(r => r.Duration);
-            //decimal expectedDuration = 0;
-            //foreach (var result in ordered)
-            //{
-            //    expectedDuration += result.Duration * (result.Occurences / iterations);
-            //    //Console.WriteLine("Duration:" + result.Duration + " Proportion: " + (result.Occurences / iterations));
-            //}
-
-            //Console.WriteLine("Expected Duration: " + Math.Round(expectedDuration, 3));
-
-            //Console.WriteLine("DONE!\n");
         }
-
-        //static void PerformTaskRandomIteration(Activity[] activities, List<Result> results, Random random)
-        //{
-        //    decimal duration = 0;
-        //    foreach (var activity in activities)
-        //    {
-        //        //add up probabilities and compare with random roll, a bit like a pie chart
-        //        var roll = (decimal)random.NextDouble();
-        //        if (roll <= activity.Probabilities[0])
-        //        {
-        //            duration += activity.Durations[0];
-        //        }
-        //        else if (roll <= activity.Probabilities[0] + activity.Probabilities[1])
-        //        {
-        //            duration += activity.Durations[1];
-        //        }
-        //        else
-        //        {
-        //            duration += activity.Durations[2];
-        //        }
-        //    }
-
-        //    var existing = results.FirstOrDefault(r => r.Duration == duration);
-        //    if (existing == null)
-        //    {
-        //        existing = new Result() { Duration = duration };
-        //        results.Add(existing);
-        //    }
-        //    existing.Occurences++;
-        //}
 
         static void PerformTaskNonrepeating(Activity[] activities)
         {
