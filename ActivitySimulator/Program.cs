@@ -94,7 +94,7 @@ namespace ActivitySimulator
         {
             var results = AssembleActivityDurationOperationsRandom(activities, iterations);
 
-            results = results.OrderBy(operationActivities => int.Parse(string.Join(string.Empty, operationActivities.Select(operationActivity => operationActivity[1])))).ToList();
+            results = results.OrderBy(operationActivities => long.Parse(string.Join(string.Empty, operationActivities.Select(operationActivity => operationActivity[1])))).ToList();
 
             CalculateExpectedDuration(activities, results);
         }
